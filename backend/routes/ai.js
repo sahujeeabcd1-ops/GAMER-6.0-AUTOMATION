@@ -1,30 +1,60 @@
 const express = require("express");
+const OpenAI = require("openai");
+const config = require("../config");
 
 const router = express.Router();
 
 router.get("/", (req, res) => {
   res.json({
     success: true,
-    agent: "AI Agent",
-    status: "ready"
+    agent: "GAMER 6.0 AI Agent",
+    status: "ready",
+    model: config.OPENAI_MODEL
   });
 });
 
-router.post("/generate", (req, res) => {
-  const { prompt } = req.body;
+router.post("/generate", async (req, res) => {
+  try {
+    const { prompt } = req.body;
 
-  if (!prompt) {
-    return res.status(400).json({
+    if (!prompt || typeof prompt !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Prompt is required"
+      });
+    }
+
+    if (!config.OPENAI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: "OPENAI_API_KEY is not configured on the server"
+      });
+    }
+
+    const client = new OpenAI({
+      apiKey: config.OPENAI_API_KEY
+    });
+
+    const response = await client.responses.create({
+      model: config.OPENAI_MODEL,
+      input: prompt
+    });
+
+    res.json({
+      success: true,
+      model: config.OPENAI_MODEL,
+      output: response.output_text
+    });
+
+  } catch (error) {
+    console.error("OpenAI API Error:", error);
+
+    res.status(500).json({
       success: false,
-      message: "Prompt is required"
+      message: "AI generation failed",
+      error: error.message
     });
   }
-
-  res.json({
-    success: true,
-    status: "received",
-    prompt
-  });
 });
 
 module.exports = router;
